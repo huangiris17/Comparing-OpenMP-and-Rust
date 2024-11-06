@@ -51,7 +51,8 @@ fn main() {
     let start_p = Instant::now();
     convolution_parallel(&input_matrix, &filter, &mut output_matrix, matrix_size, padding);
     let duration_p = start_p.elapsed();
-    println!("Execution time (parallelized): {:?}", duration_p);
+    let speedup = duration.as_secs_f64() / duration_p.as_secs_f64();
+    println!("Execution time (parallelized): {:?}, speedup: {:?}", duration_p, speedup);
 
     //println!("Output Matrix (Parallel):");
     //print_matrix(&output_matrix);
@@ -98,20 +99,19 @@ fn convolution_parallel(
     size: usize,
     padding: usize,
 ) {
+
     output.par_iter_mut().enumerate().for_each(|(i, row)| {
-        if i >= padding && i < size - padding {
-            for j in 0..row.len() {
-                if j >= padding && j < size - padding {
-                    let mut sum = 0;
-                    for fi in 0..FILTER_SIZE {
-                        for fj in 0..FILTER_SIZE {
-                            sum += input[i + fi - 1][j + fj - 1] * filter[fi][fj];
-                        }
+            let actual_i = i + padding; // Adjust `i` to match the actual row index in `input`
+
+            for j in padding..size - padding {
+                let mut sum = 0;
+                for fi in 0..FILTER_SIZE {
+                    for fj in 0..FILTER_SIZE {
+                        sum += input[actual_i + fi - 1][j + fj - 1] * filter[fi][fj];
                     }
-                    row[j - padding] = sum;  // Adjust index to account for padding in the output
                 }
+                row[j - padding] = sum;  // Adjust index to account for padding in the output
             }
-        }
-    });
+        });
 }
 

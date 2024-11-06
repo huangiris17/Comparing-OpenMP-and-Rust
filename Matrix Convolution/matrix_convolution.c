@@ -72,8 +72,9 @@ int main(int argc, char* argv[]) {
 	/* Print the execution time */
 	printf("Execution time: %f seconds\n", execution_time);
 	printf("Execution time using parallelism: %f seconds\n", execution_time_p);
-
-        /* Free the matrix */
+	printf("Speedup: %f\n", execution_time/execution_time_p);
+        
+	/* Free the matrix */
 	freeMatrix(matrix, matrix_size);
 	freeMatrix(output_matrix, output_size);
 
@@ -101,10 +102,11 @@ void convolution (int** input, int filter[FILTER_SIZE][FILTER_SIZE], int** outpu
 void convolution_parallel (int** input, int filter[FILTER_SIZE][FILTER_SIZE], int** output, int input_size, int padding)
 {
         //omp_set_num_threads(4);
-	int chunk_size = 256;
-	printf("Parallel with chunk size: %d\n", chunk_size);
-	#pragma omp parallel for schedule(static, 256)
-        for (int i = padding; i < input_size - padding; i++) {
+	//int chunk_size = 256;
+	//printf("Parallel with chunk size: %d\n", chunk_size);
+	//#pragma omp parallel for schedule(static, chunk_size)
+        #pragma omp parallel for collapse(2)
+	for (int i = padding; i < input_size - padding; i++) {
                 for (int j = padding; j < input_size - padding; j++) {
                         int sum = 0;
 

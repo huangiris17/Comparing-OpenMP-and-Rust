@@ -2,19 +2,22 @@
 #include <stdlib.h>
 #include <omp.h>
 
-#define INF 1000000000  // A large value representing "infinity"
+#define INF 1000000000
 
-void floyd_warshall(int n, int **dist) {
+void floyd_warshall(int n, int *dist) {
     int i, j, k;
 
-    for (k = 0; k < n; ++k) {
-        #pragma omp parallel for private(j) schedule(static)
-        for (i = 0; i < n; ++i) {
-            for (j = 0; j < n; ++j) {
-                if (dist[i][k] != INF && dist[k][j] != INF) {
-                    int new_dist = dist[i][k] + dist[k][j];
-                    if (new_dist < dist[i][j]) {
-                        dist[i][j] = new_dist;
+    #pragma omp parallel private(i, j, k)
+    {
+        for (k = 0; k < n; ++k) {
+            #pragma omp for schedule(static)
+            for (i = 0; i < n; ++i) {
+                for (j = 0; j < n; ++j) {
+                    if (dist[i * n + k] != INF && dist[k * n + j] != INF) {
+                        int new_dist = dist[i * n + k] + dist[k * n + j];
+                        if (new_dist < dist[i * n + j]) {
+                            dist[i * n + j] = new_dist;
+                        }
                     }
                 }
             }
@@ -22,84 +25,70 @@ void floyd_warshall(int n, int **dist) {
     }
 }
 
-int main() {
-    int n, m;
-    printf("Enter the number of vertices and edges: ");
-    if (scanf("%d %d", &n, &m) != 2) {
-        fprintf(stderr, "Error reading the number of vertices and edges.\n");
-        return 1;
-    }
-
-    if (n <= 0 || m < 0) {
-        fprintf(stderr, "Number of vertices must be positive, and number of edges cannot be negative.\n");
-        return 1;
-    }
-
-    int **dist = (int **)malloc(n * sizeof(int *));
-    if (dist == NULL) {
-        fprintf(stderr, "Memory allocation failed for distance matrix.\n");
-        return 1;
-    }
+int main(int argc, char *argv[]) {
     int i, j;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s -f <filename> <num_threads>\n", argv[0]);
+        return 1;
+    }
+
+    char *filename = argv[2];
+    int num_threads = atoi(argv[3]);
+
+    omp_set_num_threads(num_threads);
+
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file '%s'.\n", filename);
+        return 1;
+    }
+
+    int n, m;
+
+    int *dist = (int *)malloc(n * n * sizeof(int));
+    if (dist == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        fclose(file);
+        return 1;
+    }
+
     for (i = 0; i < n; ++i) {
-        dist[i] = (int *)malloc(n * sizeof(int));
-        if (dist[i] == NULL) {
-            fprintf(stderr, "Memory allocation failed for dist[%d].\n", i);
-            for (j = 0; j < i; ++j) {
-                free(dist[j]);
-            }
-            free(dist);
-            return 1;
-        }
         for (j = 0; j < n; ++j) {
             if (i == j)
-                dist[i][j] = 0;
+                dist[i * n + j] = 0;
             else
-                dist[i][j] = INF;
+                dist[i * n + j] = INF;
         }
     }
 
-    printf("Enter each edge and its weight (format: u v w):\n");
     for (i = 0; i < m; ++i) {
         int u, v, w;
-        if (scanf("%d %d %d", &u, &v, &w) != 3) {
-            fprintf(stderr, "Error reading edge %d.\n", i + 1);
-            for (j = 0; j < n; ++j) {
-                free(dist[j]);
-            }
-            free(dist);
-            return 1;
-        }
         u--; v--;
-        if (u < 0 || u >= n || v < 0 || v >= n) {
-            fprintf(stderr, "Invalid vertex index: u=%d, v=%d (after adjusting for 1-based indexing).\n", u + 1, v + 1);
-            // Free allocated memory before exiting
-            for (j = 0; j < n; ++j) {
-                free(dist[j]);
-            }
-            free(dist);
-            return 1;
+        if (w < dist[u * n + v]) {
+            dist[u * n + v] = w;
         }
-        dist[u][v] = w;
     }
 
+    fclose(file);
+
+    double start_time = omp_get_wtime();
     floyd_warshall(n, dist);
+    double end_time = omp_get_wtime();
 
-    printf("Shortest distance matrix:\n");
-    for (i = 0; i < n; ++i) {
-        for (j = 0; j < n; ++j) {
-            if (dist[i][j] == INF)
-                printf("INF ");
-            else
-                printf("%d ", dist[i][j]);
-        }
-        printf("\n");
-    }
+    printf("Execution Time (s): %.6f\n", end_time - start_time);
 
-    for (i = 0; i < n; ++i) {
-        free(dist[i]);
-    }
+    // printf("Shortest distance matrix:\n");
+    // for (i = 0; i < n; ++i) {
+    //     for (j = 0; j < n; ++j) {
+    //         if (dist[i * n + j] == INF)
+    //             printf("INF ");
+    //         else
+    //             printf("%d ", dist[i * n + j]);
+    //     }
+    //     printf("\n");
+    // }
+
     free(dist);
-
     return 0;
 }

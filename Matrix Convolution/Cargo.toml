@@ -1,0 +1,13 @@
+[package]
+name = "matrix_convolutoin_rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8"      # or latest version
+rayon = "1.5"     # or latest version
+
+[profile.release]
+debug = true
